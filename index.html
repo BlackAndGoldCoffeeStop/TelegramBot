@@ -3,27 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Web App</title>
+    <title>Order Menu</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        h1 { color: #333; }
-        .container { margin-top: 50px; }
+        body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
+        .menu-item { display: flex; justify-content: space-between; margin: 10px 0; }
+        button { margin-top: 20px; padding: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Welcome to Our Cafe!</h1>
-        <p id="user-info">Loading...</p>
-    </div>
+    <h2>Order Your Drink</h2>
+    <div id="menu"></div>
+    <h3>Total: $<span id="total">0.00</span></h3>
+    <button onclick="placeOrder()">Place Order</button>
 
     <script>
-        let tg = window.Telegram.WebApp;
-        tg.expand(); // Expand the app to full screen
+        const menuItems = [
+            { name: "Latte", price: 4.50 },
+            { name: "Espresso", price: 3.50 },
+            { name: "Matcha", price: 5.00 },
+            { name: "Cookie", price: 2.00 }
+        ];
+        
+        const cart = {};
+        const menuDiv = document.getElementById("menu");
 
-        document.getElementById("user-info").innerText = tg.initDataUnsafe?.user?.first_name
-            ? `Hello, ${tg.initDataUnsafe.user.first_name}!`
-            : "Hello, guest!";
+        menuItems.forEach(item => {
+            cart[item.name] = 0; // Initialize cart quantity
+            const div = document.createElement("div");
+            div.classList.add("menu-item");
+            div.innerHTML = `
+                <span>${item.name} ($${item.price.toFixed(2)})</span>
+                <input type="number" id="${item.name}" min="0" value="0" onchange="updateCart('${item.name}', ${item.price})">
+            `;
+            menuDiv.appendChild(div);
+        });
+
+        function updateCart(item, price) {
+            cart[item] = parseInt(document.getElementById(item).value) || 0;
+            updateTotal();
+        }
+
+        function updateTotal() {
+            let total = 0;
+            for (let item in cart) {
+                total += cart[item] * menuItems.find(m => m.name === item).price;
+            }
+            document.getElementById("total").textContent = total.toFixed(2);
+        }
+
+        function placeOrder() {
+            const order = {
+                user_id: Telegram.WebApp.initDataUnsafe?.user?.id || "unknown",
+                items: Object.keys(cart).filter(item => cart[item] > 0).map(item => ({
+                    name: item,
+                    quantity: cart[item],
+                    price: menuItems.find(m => m.name === item).price
+                })),
+                total_price: parseFloat(document.getElementById("total").textContent)
+            };
+            
+            Telegram.WebApp.sendData(JSON.stringify(order));
+            alert("Order sent to bot!");
+            Telegram.WebApp.close();
+        }
     </script>
 </body>
 </html>
